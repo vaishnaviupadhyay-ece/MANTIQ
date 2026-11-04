@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 76 76" width="64" height="64" role="img" aria-label="MANTIQ">
+  <title>MANTIQ</title>
+  <rect x="-6" y="-6" width="76" height="76" rx="14" fill="#F2F2ED"/>
+  <path d="M48.71 12.08 A26 26 0 1 0 57.60 27.49" fill="none" stroke="#173B3A" stroke-width="4"/>
+  <polyline points="17,43 24,21 32,36 40,21 47,43" fill="none" stroke="#173B3A" stroke-width="4" stroke-linejoin="miter"/>
+  <circle cx="54.5" cy="19" r="4.5" fill="#C4A875"/>
+</svg>

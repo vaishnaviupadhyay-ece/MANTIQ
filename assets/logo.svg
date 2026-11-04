@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 64" width="250" height="64" role="img" aria-label="MANTIQ">
+  <title>MANTIQ — Action Before Failure.</title>
+
+  <!-- Symbol: a bearing ring, open at one point, with a vibration signal that reads as an M -->
+  <path d="M48.71 12.08 A26 26 0 1 0 57.60 27.49"
+        fill="none" stroke-width="4" stroke-linecap="butt"
+        style="stroke:var(--mq-mark,#173B3A)"/>
+  <polyline points="17,43 24,21 32,36 40,21 47,43"
+            fill="none" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt"
+            style="stroke:var(--mq-mark,#173B3A)"/>
+  <!-- Brass dot: the point where action happens before the ring closes into failure -->
+  <circle cx="54.5" cy="19" r="4.5" style="fill:var(--mq-accent,#C4A875)"/>
+
+  <!-- Wordmark -->
+  <text x="80" y="42"
+        font-family="'Segoe UI', system-ui, Arial, sans-serif"
+        font-size="30" font-weight="600" letter-spacing="5"
+        style="fill:var(--mq-word,#173B3A)">MANTIQ</text>
+</svg>
