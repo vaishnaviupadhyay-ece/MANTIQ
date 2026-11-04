@@ -173,7 +173,22 @@ MANTIQ/
 └── README.md
 ```
 
-## 9. Installation and Execution
+## 9. Application Screenshots
+
+### Operator Dashboard
+![MANTIQ Operator Dashboard](assets/screenshots/operator-dashboard.png)
+
+### Maintenance Head Dashboard
+![MANTIQ Maintenance Dashboard](assets/screenshots/maintenance-dashboard.png)
+
+### Historical Data Replay
+![MANTIQ Historical Replay](assets/screenshots/replay.png)
+
+### Alert Management
+![MANTIQ Alerts](assets/screenshots/alerts.png)
+
+
+## 10. Installation and Execution
 
 ### Prerequisites
 
