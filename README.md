@@ -1,279 +1,495 @@
 # MANTIQ — Action Before Failure
 
-**An AI-assisted industrial maintenance platform that transforms machine-condition anomalies into trackable maintenance actions.**
+### AI-Assisted Industrial Condition Monitoring & Maintenance Management
 
-MANTIQ is a prototype predictive-maintenance platform developed around rotating machinery and bearing-condition monitoring. It combines machine-learning-based anomaly detection, historical data replay, condition monitoring and a role-based maintenance workflow.
+**Turning machine-condition anomalies into actionable, traceable and verifiable maintenance decisions.**
 
-Rather than simply displaying abnormal readings, MANTIQ aims to connect machine-condition insights with human decisions, maintenance actions and verification.
+MANTIQ is an AI-assisted industrial maintenance platform designed to help manufacturing facilities and warehouses monitor rotating machinery, identify unusual bearing behaviour, and coordinate maintenance actions through a structured, role-based workflow.
 
-> **Current prototype:** Uses historical NASA IMS bearing data. It does not connect to live industrial sensors or control machinery.
+Rather than presenting anomaly scores as isolated technical readings, MANTIQ connects condition monitoring with the people responsible for responding to equipment issues.
+
+It brings together machine-condition analysis, prioritised alerts, operator observations, maintenance assignments, resolution records and verification into one platform.
+
+> **Action Before Failure.**
 
 ---
 
-## 1. Problem Statement
+## 1. The Problem
 
-Unexpected machinery failures can lead to production downtime, maintenance costs and operational disruption.
+Industrial equipment rarely fails without warning. Changes in vibration behaviour and other operating signals can indicate developing abnormalities. However, identifying unusual behaviour is only one part of the maintenance problem.
 
-Traditional maintenance approaches often rely on fixed schedules or manual inspection. MANTIQ explores how machine-learning-based condition monitoring can help maintenance teams identify unusual vibration patterns and organize timely intervention.
+In many industrial environments, the response process can be fragmented:
 
-## 2. Our Approach
+- Machine-condition information is difficult for operators to interpret.
+- Anomalies may not translate into clear maintenance priorities.
+- Operator observations can be disconnected from maintenance decisions.
+- Escalation and assignment processes may lack traceability.
+- Resolution does not necessarily guarantee that the issue has been verified.
+- Maintenance teams may lack a consolidated record of actions taken.
 
-MANTIQ processes historical bearing vibration recordings, extracts statistical features, applies anomaly-detection models and presents condition changes through an interactive dashboard.
+The result is a gap between **detecting an abnormal condition and ensuring that someone acts on it.**
 
-The platform also provides a workflow for recording, assigning, escalating and verifying maintenance actions.
+## 2. Our Solution
+
+MANTIQ bridges this gap through an integrated condition-monitoring and maintenance workflow.
+
+The platform analyses historical bearing vibration data using machine-learning models, converts anomaly outputs into simplified condition categories, and connects those categories to a structured maintenance process.
+
+### The MANTIQ approach
+
+1. **Monitor:** Analyse vibration-derived features for individual bearings.
+2. **Identify:** Use Isolation Forest models to flag unusual operating patterns.
+3. **Prioritise:** Translate model outputs into Normal, Warning and Critical condition categories using prototype heuristic rules.
+4. **Communicate:** Allow operators to acknowledge alerts, document observations and escalate concerns.
+5. **Coordinate:** Enable Maintenance Heads to assign work and record corrective actions.
+6. **Verify:** Maintain a final verification step and an auditable activity history.
+
+MANTIQ is designed around a simple principle: an anomaly should lead to an accountable maintenance response, not remain an isolated data point.
+
+---
 
 ## 3. Key Features
 
-- **Bearing condition monitoring:** Individual condition assessment for four bearings.
-- **Machine-learning anomaly detection:** Bearing-specific Isolation Forest models.
-- **Historical data replay:** Replay historical recordings and observe condition changes.
-- **Condition classification:** Simplified NORMAL, WARNING and CRITICAL states.
-- **Alert management:** Track alerts through acknowledgement, maintenance, resolution and verification.
-- **Role-based dashboards:** Separate Operator and Maintenance Head workspaces.
-- **Maintenance tracking:** Record operator findings, assign corrective actions and verify completion.
-- **Condition analytics:** Visualize anomaly scores, condition trends and historical changes.
+### AI-Assisted Bearing Condition Monitoring
 
-## 4. System Architecture
+- Individual Isolation Forest models for four bearings.
+- Statistical vibration-feature extraction.
+- Anomaly scores and anomaly flags.
+- Per-bearing condition assessment.
+- Historical condition trends and anomaly-rate visualisations.
+- Experimental historical-data replay.
+
+### Role-Based Dashboards
+
+**Operator Dashboard**
+- Overall machine-condition summary.
+- Individual bearing health.
+- Condition trends.
+- Recent maintenance alerts.
+- Operator findings and escalation workflow.
+- Maintenance activity visibility.
+
+**Maintenance Head Dashboard**
+- Maintenance workload overview.
+- Pending acknowledgements.
+- Unassigned maintenance work.
+- Active maintenance tasks.
+- Pending verification.
+- Components requiring attention.
+- Maintenance activity history.
+
+### Structured Alert Management
+
+Every maintenance alert follows a defined lifecycle:
+
+`NEW → ACKNOWLEDGED → UNDER MAINTENANCE → RESOLVED → VERIFIED`
+
+The workflow supports:
+
+- Alert acknowledgement.
+- Operator findings.
+- Escalation to the Maintenance Head.
+- Maintenance assignment.
+- Corrective-action recording.
+- Final verification.
+- Chronological activity logging.
+
+### Traceability and Accountability
+
+MANTIQ maintains a record of maintenance events, including:
+
+- Who performed an action.
+- The action performed.
+- The associated alert.
+- The time of the action.
+- Relevant findings or maintenance details.
+
+This creates a traceable link between an identified condition and the subsequent maintenance response.
+
+### Historical Data Replay
+
+The replay functionality allows users to explore the historical dataset and observe how model outputs and condition assessments change across recordings.
+
+It supports demonstrations and examination of the model's behaviour without implying that a live factory sensor connection is currently deployed.
+
+---
+
+## 4. Technical Architecture
+
+MANTIQ follows a modular Python application architecture that separates machine-learning processing, application services, database operations and user-interface components.
 
 ```text
-NASA IMS Bearing Dataset
-          |
-          v
-    Feature Extraction
-          |
-          v
-  Processed Feature Dataset
-          |
-          v
- Bearing-Specific ML Models
-       (Isolation Forest)
-          |
-          v
-   Anomaly Scores and Flags
-          |
-          v
-    Condition Assessment
-          |
-          v
- Historical Replay Engine
-          |
-          v
-    Alert Management
-          |
-          v
- Operator <--> Maintenance Head
-          |
-          v
- Maintenance Resolution
-      and Verification
+                  MANTIQ PLATFORM
+                         |
+          +--------------+--------------+
+          |                             |
+     DATA PIPELINE                USER INTERFACE
+          |                             |
+   NASA IMS Dataset             Role-Based Access
+          |                             |
+   Feature Extraction       +-----------+-----------+
+          |                 |                       |
+   Per-Bearing ML       Operator Dashboard    Maintenance Head
+          |                 |                  Dashboard
+   Anomaly Scoring          |                       |
+          |                 +-----------+-----------+
+   Condition Engine                     |
+          |                      Alert Management
+   Condition Assessment                 |
+          |                      SQLite Database
+   Historical Trends                   |
+          +----------------------------+
+                         |
+                Activity and History
 ```
 
-## 5. Dataset
+### Application modules
 
-MANTIQ uses the **NASA IMS Bearing Dataset**, containing vibration measurements collected during bearing run-to-failure experiments.
+| Module | Responsibility |
+|---|---|
+| `src/` | Data processing, feature extraction and model development |
+| `app/pages/` | Operator and Maintenance Head dashboards |
+| `app/components/` | Reusable interface elements, charts and visual components |
+| `app/services/` | Authentication, condition assessment, replay and application services |
+| `app/database/` | Alert management and maintenance activity persistence |
+| `models/` | Trained per-bearing model artifacts |
+| `data/processed/` | Processed vibration-feature dataset |
+| `assets/` | Branding and presentation assets |
 
-Dataset characteristics used in this prototype:
+The modular structure supports future integration of additional machine types, sensor sources and maintenance workflows without requiring the entire application to be redesigned.
 
-- 2,156 recordings from the selected `1st_test` experiment.
-- Four bearings.
-- Two vibration channels per bearing.
-- 20,480 samples per channel per recording.
-- Sampling frequency: 20 kHz.
-- Eight channels in total.
+---
 
-Each bearing is represented by two vibration channels.
+## 5. Machine Learning Methodology
 
-### Dataset acquisition
+### Dataset
 
-The original raw dataset is not stored in this GitHub repository because of its size.
+The current prototype uses the **NASA IMS Bearing Dataset**, a publicly available experimental dataset for bearing condition monitoring.
 
-Download it from:
+The selected experimental recording set contains:
 
-[NASA IMS Bearing Dataset](https://phm-datasets.s3.amazonaws.com/NASA/4.+Bearings.zip)
+| Dataset characteristic | Value |
+|---|---:|
+| Number of recordings | 2,156 |
+| Samples per recording and channel | 20,480 |
+| Number of channels | 8 |
+| Number of bearings | 4 |
+| Sampling frequency | 20 kHz |
+| Recording interval | 1 second |
 
-Extract the required `1st_test` experiment into:
+Two vibration channels are associated with each bearing.
 
-```text
-data/raw/IMS/IMS/1st_test/
-```
+The experiment records bearing degradation under controlled test conditions. The dataset provides a useful foundation for exploring anomaly detection in rotating machinery.
 
-The processed feature dataset and trained models are included in this repository, allowing the existing application to use the prepared artifacts without requiring raw-data extraction first.
+### Feature Engineering
 
-## 6. Machine Learning Methodology
+The raw vibration recordings are transformed into statistical features.
 
-### Feature extraction
+Five features are extracted from each channel:
 
-Five statistical features are extracted from each vibration channel:
+1. Root Mean Square (RMS)
+2. Standard Deviation
+3. Peak Absolute Amplitude
+4. Kurtosis
+5. Crest Factor
 
-- Root Mean Square (RMS)
-- Standard deviation
-- Peak absolute amplitude
-- Kurtosis
-- Crest factor
+With eight channels and five features per channel, the processed dataset contains **40 features per recording**, in addition to its timestamp.
 
-With two channels per bearing, each bearing is represented by ten features.
+This feature representation provides a compact numerical description of vibration behaviour for downstream anomaly detection.
 
-### Anomaly detection
+### Model Development
 
-A separate Isolation Forest model is trained for each bearing.
+MANTIQ uses an individual Isolation Forest model for each bearing.
 
-The training and evaluation workflow uses a chronological split:
+| Parameter | Configuration |
+|---|---|
+| Algorithm | Isolation Forest |
+| Models | One per bearing |
+| Estimators | 200 |
+| Contamination setting | 0.05 |
+| Random state | 42 |
+| Training split | First 60% |
+| Testing split | Remaining 40% |
+| Feature scaling | Standardisation |
+| Missing-value handling | Training-set medians |
 
-- First 60% of recordings: training.
-- Remaining 40%: testing.
+The dataset is divided chronologically rather than randomly:
 
-Preprocessing statistics are learned from the training data and reused during scoring.
+- The first 60% of recordings are used for training.
+- The remaining 40% are reserved for testing.
+- Imputation values and scaling parameters are fitted on training data only.
 
-The trained model artifacts include the model, scaler, training medians and feature-column information.
+This approach preserves temporal ordering and helps avoid information leakage from the later test period into model fitting.
 
-### Condition assessment
+### Anomaly Scoring
 
-Anomaly scores and flags are evaluated over a rolling window to derive simplified machine-condition states:
+Each model generates:
 
-- NORMAL
-- WARNING
-- CRITICAL
+- An anomaly score using the Isolation Forest decision function.
+- An anomaly flag using the model's prediction output.
 
-The condition thresholds are prototype heuristics and have not been validated as universal industrial operating limits.
+Lower decision-function scores indicate more unusual observations. A negative score is classified as an anomaly by the model.
+
+The model outputs are used as inputs to MANTIQ's condition-assessment layer.
+
+### Condition Assessment
+
+MANTIQ translates anomaly outputs into three simplified condition categories:
+
+| Condition | Meaning |
+|---|---|
+| NORMAL | No elevated concern under the current prototype rules |
+| WARNING | Unusual behaviour warrants closer monitoring or inspection |
+| CRITICAL | Elevated concern warrants maintenance attention |
+
+The condition engine considers anomaly rate, average anomaly score and consecutive anomaly flags over a rolling window of up to 50 recordings.
+
+**Important:** These condition categories are prototype heuristic assessments. They are not validated industrial operating limits, confirmed fault diagnoses or estimates of remaining useful life.
+
+---
+
+## 6. Industrial Relevance and Potential Impact
+
+MANTIQ is designed to address the operational gap between condition monitoring and maintenance execution.
+
+Its potential applications include:
+
+- Manufacturing facilities.
+- Automotive and automotive-component production.
+- Industrial warehouses.
+- Rotating machinery and bearing monitoring.
+- Equipment maintenance teams.
+
+### What makes MANTIQ different?
+
+The innovation is not simply the use of an anomaly-detection algorithm.
+
+MANTIQ integrates machine-learning outputs with a human-centred maintenance process:
+
+- Machine-level anomalies are organised into understandable condition categories.
+- Operators can contribute contextual observations.
+- Maintenance Heads can assign and track corrective actions.
+- Verification creates an additional accountability step.
+- Activity records preserve the history of maintenance decisions.
+
+This combination makes MANTIQ a maintenance coordination platform built around condition intelligence, rather than a standalone anomaly visualisation dashboard.
+
+---
 
 ## 7. Technology Stack
 
-| Area | Technology |
+| Technology | Application |
 |---|---|
-| Programming language | Python |
-| Dashboard | Streamlit |
-| Data processing | Pandas, NumPy |
-| Machine learning | Scikit-learn |
-| Model persistence | Joblib |
-| Visualization | Plotly |
-| Database | SQLite |
-| Dataset | NASA IMS Bearing Dataset |
+| Python | Core application and ML development |
+| Streamlit | Interactive web application |
+| NumPy | Numerical processing |
+| Pandas | Dataset processing and analysis |
+| SciPy | Statistical signal processing |
+| Scikit-learn | Isolation Forest and feature scaling |
+| Plotly | Interactive data visualisations |
+| SQLite | Alert and maintenance data persistence |
+| Joblib | Model serialisation and loading |
+| HTML/CSS | Interface styling and theme customisation |
+| Git and GitHub | Version control and project hosting |
 
-## 8. Project Structure
+---
 
-```text
-MANTIQ/
-├── app/
-│   ├── components/
-│   ├── database/
-│   ├── pages/
-│   ├── services/
-│   ├── config.py
-│   ├── main.py
-│   └── theme.py
-├── assets/
-├── checks/
-├── data/
-│   └── processed/
-├── models/
-├── notebooks/
-├── results/
-├── src/
-├── requirements.txt
-└── README.md
-```
-
-## 9. Application Screenshots
+## 8. Project Screenshots
 
 ### Operator Dashboard
-![MANTIQ Operator Dashboard](assets/screenshots/operator-dashboard.png)
+
+The operator interface provides a consolidated view of bearing condition, anomaly trends and maintenance activity.
+
+![Operator Dashboard](assets/screenshots/operator-dashboard.png)
 
 ### Maintenance Head Dashboard
-![MANTIQ Maintenance Dashboard](assets/screenshots/maintenance-dashboard.png)
 
-### Historical Data Replay
-![MANTIQ Historical Replay](assets/screenshots/replay.png)
+The Maintenance Head interface focuses on workload, maintenance priorities and verification.
+
+![Maintenance Head Dashboard](assets/screenshots/maintenance-dashboard.png)
+
+### Historical Replay
+
+Historical replay allows users to examine condition assessments across the experimental dataset.
+
+![Historical Replay](assets/screenshots/replay.png)
 
 ### Alert Management
-![MANTIQ Alerts](assets/screenshots/alerts.png)
 
+The alert interface supports acknowledgement, operator findings, escalation and maintenance coordination.
 
-## 10. Installation and Execution
+![Alert Management](assets/screenshots/alerts.png)
+
+---
+
+## 9. Installation and Setup
 
 ### Prerequisites
 
 - Python 3.11 recommended.
 - Git.
+- pip.
 - Windows, Linux or macOS.
 
-### Clone the repository
+### Step 1: Clone the repository
 
 ```bash
 git clone https://github.com/vaishnaviupadhyay-ece/MANTIQ.git
+
 cd MANTIQ
 ```
 
-### Create a virtual environment
+### Step 2: Create a virtual environment
 
-Windows PowerShell:
+**Windows PowerShell**
 
 ```powershell
 python -m venv .venv
+
 .venv\Scripts\Activate.ps1
 ```
 
-Linux/macOS:
+**Linux / macOS**
 
 ```bash
 python3 -m venv .venv
+
 source .venv/bin/activate
 ```
 
-### Install dependencies
+### Step 3: Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 
-### Run the application
+### Step 4: Obtain the NASA IMS dataset
 
-From the project root:
+The raw NASA IMS dataset is not included in this repository because of its large file size.
 
-```bash
-python -m streamlit run app/main.py
+Download it from:
+
+[Download NASA IMS Bearing Dataset](https://phm-datasets.s3.amazonaws.com/NASA/4.+Bearings.zip)
+
+Extract the required `1st_test` recording directory into:
+
+```text
+data/raw/IMS/IMS/1st_test/
 ```
 
-Open the local URL displayed in the terminal.
+The repository includes the processed feature dataset and trained model artifacts. If you want to regenerate the pipeline from raw recordings, ensure the raw dataset is extracted into the expected location.
 
-The prototype includes demonstration authentication. Use the demo credentials configured in `app/config.py`.
+### Step 5: Run MANTIQ
 
-## 10. Important Limitations
+```bash
+streamlit run app/main.py
+```
 
-MANTIQ is a research and demonstration prototype.
+Open the local URL displayed in the terminal to access the application.
 
-- The current data source is historical NASA IMS data, not a live factory connection.
-- Anomaly detection does not guarantee failure prediction.
-- Condition thresholds are heuristic and require industrial validation.
-- The prototype does not estimate validated remaining useful life (RUL).
-- No physical sensor integration or automatic machine shutdown is implemented.
-- Demo authentication is not production-grade security.
+Use the demo accounts configured for the Operator and Maintenance Head roles.
 
-## 11. Future Scope
+---
 
-- Integration with configurable vibration and temperature sensors.
-- Edge-based anomaly detection.
-- Machine-specific condition thresholds.
-- Expanded testing across industrial machinery and datasets.
-- Multilingual maintenance instructions in English, Hindi and Kannada.
-- Integration with industrial IoT infrastructure.
+## 10. Demo and Presentation
 
-## 12. AI Tools and Development Assistance
+**Project demonstration:** [Insert your demo video link here]
 
-## AI Tools and Development Assistance
+The demonstration covers:
+
+1. MANTIQ login and role-based access.
+2. Operator dashboard and bearing-condition overview.
+3. Anomaly trends and historical data replay.
+4. Alert acknowledgement and operator findings.
+5. Escalation to the Maintenance Head.
+6. Maintenance assignment and corrective-action recording.
+7. Resolution verification and activity history.
+
+The demonstration uses historical experimental data and the application's simulated replay workflow.
+
+---
+
+## 11. Limitations and Responsible Interpretation
+
+MANTIQ is a working prototype developed using historical experimental bearing data.
+
+The following distinctions are important:
+
+- The current prototype uses the NASA IMS dataset, not a live factory sensor feed.
+- Isolation Forest flags unusual patterns; it does not independently confirm a mechanical fault.
+- Condition thresholds are heuristic prototype rules, not validated industrial standards.
+- The current implementation does not establish guaranteed failure-prediction lead times or remaining useful life.
+- The alert workflow demonstrates software-based maintenance coordination; it does not directly control industrial equipment.
+- Demo authentication is not intended to represent production-grade enterprise security.
+
+These boundaries define the current implementation and the next engineering challenges.
+
+---
+
+## 12. Future Scope and Scalability
+
+MANTIQ is envisioned as a modular condition-intelligence and maintenance ecosystem that can expand beyond the current experimental bearing-monitoring prototype.
+
+### Multi-Asset and Multi-Sensor Integration
+
+Support additional rotating machinery and configurable sensor combinations, allowing the platform to be adapted to different industrial assets.
+
+### Edge-Based Monitoring
+
+Introduce edge gateways capable of processing vibration and other sensor measurements closer to the equipment, reducing dependence on continuous cloud connectivity.
+
+### Configurable Asset Profiles
+
+Allow facilities to configure machine-specific operating parameters, sensor combinations and condition-assessment rules rather than relying on a single universal threshold.
+
+### Advanced Predictive Analytics
+
+Explore temporal models, fault classification, degradation modelling and remaining-useful-life estimation using appropriately labelled and validated datasets.
+
+### Industrial Connectivity
+
+Investigate integration with industrial communication protocols, MQTT-based data pipelines and existing maintenance management systems.
+
+### Multilingual Operator Assistance
+
+Extend concise maintenance instructions and operational guidance across English, Hindi and Kannada, with optional text-to-speech support.
+
+### Enterprise Deployment
+
+Develop stronger authentication, access control, auditability, multi-facility support and scalable time-series data storage.
+
+**Long-term vision:** A configurable industrial maintenance platform that connects sensor intelligence, machine-level insights and accountable human action across different facilities and equipment types.
+
+---
+
+## 13. AI Tools and Development Assistance
 
 AI-assisted tools were used during the development of MANTIQ:
 
-- **ChatGPT (OpenAI):** System architecture discussions, coding assistance, debugging, implementation guidance and technical documentation.
+- **ChatGPT (OpenAI):** Architecture discussions, coding assistance, debugging, implementation guidance and technical documentation.
 - **Claude (Anthropic):** Coding assistance, code review, debugging and development support.
 
-AI tools supported the development process. Project implementation, integration, testing, model training and validation were carried out and reviewed as part of the development workflow.
+AI tools supported the development process. Implementation, integration, testing, model development and review were part of the project development workflow.
 
-## 13. Acknowledgements
+---
 
-- NASA IMS Bearing Dataset and its researchers.
-- Open-source Python and machine-learning communities.
+## 14. Project Information
+
+| Detail | Information |
+|---|---|
+| Project | MANTIQ |
+| Domain | AI/ML, Industrial IoT and Predictive Maintenance |
+| Application | Industrial condition monitoring and maintenance management |
+| ML algorithm | Isolation Forest |
+| Dataset | NASA IMS Bearing Dataset |
+| Development language | Python |
+| Repository | [GitHub – MANTIQ](https://github.com/vaishnaviupadhyay-ece/MANTIQ) |
+| Tagline | Action Before Failure |
 
 ---
 
 **MANTIQ — Action Before Failure.**
+
+*From machine-condition intelligence to accountable maintenance action.*
