@@ -1,4 +1,3 @@
-
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,9 +30,15 @@ def _now():
 def _connect():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
-    connection = sqlite3.connect(DB_PATH, timeout=10)
+    connection = sqlite3.connect(
+        DB_PATH,
+        timeout=15,
+        isolation_level="DEFERRED",
+    )
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 15000")
+
     return connection
 
 
@@ -75,6 +80,35 @@ def _record_activity(
     )
 
 
+def _require_role(role, allowed_roles):
+    if role not in allowed_roles:
+        raise AlertError(
+            "You do not have permission to perform this action."
+        )
+
+
+def _get_alert_for_update(connection, alert_id):
+    """
+    Retrieve an alert inside a write transaction.
+
+    BEGIN IMMEDIATE ensures competing submissions are serialized.
+    """
+    connection.execute("BEGIN IMMEDIATE")
+
+    alert = connection.execute(
+        "SELECT * FROM alerts WHERE id = ?",
+        (alert_id,),
+    ).fetchone()
+
+    if not alert:
+        raise AlertError("Alert not found.")
+
+    return alert
+
+
+# ---------------------------------------------------------
+# ALERT CREATION
+# ---------------------------------------------------------
 
 def create_alert(
     bearing,
@@ -84,12 +118,12 @@ def create_alert(
     condition_label,
     performed_by="MANTIQ System",
 ):
-    """Create or update an alert without duplicating a historical event."""
+    """Create or update an alert without duplicating historical events."""
 
     if bearing not in (1, 2, 3, 4):
         raise AlertError("Invalid bearing number.")
 
-    severity = severity.upper()
+    severity = str(severity).upper()
 
     if severity not in SEVERITY_RANK:
         raise AlertError("Severity must be WARNING or CRITICAL.")
@@ -98,7 +132,8 @@ def create_alert(
 
     with _connect() as connection:
 
-        # First check whether this exact historical event was recorded before.
+        connection.execute("BEGIN IMMEDIATE")
+
         historical = connection.execute(
             """
             SELECT * FROM alerts
@@ -132,7 +167,6 @@ def create_alert(
 
             return alert_id
 
-        # Do not create another unresolved alert for this bearing.
         existing = connection.execute(
             """
             SELECT * FROM alerts
@@ -172,9 +206,14 @@ def create_alert(
         cursor = connection.execute(
             """
             INSERT INTO alerts (
-                alert_code, bearing, severity, status,
-                created_at, recording_timestamp,
-                anomaly_score, condition_label
+                alert_code,
+                bearing,
+                severity,
+                status,
+                created_at,
+                recording_timestamp,
+                anomaly_score,
+                condition_label
             )
             VALUES (?, ?, ?, 'NEW', ?, ?, ?, ?)
             """,
@@ -202,6 +241,10 @@ def create_alert(
 
         return alert_id
 
+
+# ---------------------------------------------------------
+# ALERT RETRIEVAL
+# ---------------------------------------------------------
 
 def get_alert(alert_id):
     initialize_database()
@@ -245,28 +288,27 @@ def get_alert_activity(alert_id):
     return [dict(row) for row in rows]
 
 
-def _require_role(role, allowed_roles):
-    if role not in allowed_roles:
-        raise AlertError("You do not have permission to perform this action.")
-
+# ---------------------------------------------------------
+# ACKNOWLEDGEMENT
+# ---------------------------------------------------------
 
 def acknowledge_alert(alert_id, username, role):
     _require_role(role, {"operator", "maintenance_head"})
 
     with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
-
-        if not alert:
-            raise AlertError("Alert not found.")
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] != "NEW":
-            raise AlertError("Only new alerts can be acknowledged.")
+            raise AlertError(
+                "This alert has already been acknowledged."
+            )
 
         connection.execute(
-            "UPDATE alerts SET status = 'ACKNOWLEDGED' WHERE id = ?",
+            """
+            UPDATE alerts
+            SET status = 'ACKNOWLEDGED'
+            WHERE id = ? AND status = 'NEW'
+            """,
             (alert_id,),
         )
 
@@ -279,28 +321,30 @@ def acknowledge_alert(alert_id, username, role):
         )
 
 
+# ---------------------------------------------------------
+# OPERATOR FINDINGS
+# ---------------------------------------------------------
+
 def add_operator_findings(alert_id, username, role, findings):
     _require_role(role, {"operator"})
 
-    findings = findings.strip()
+    findings = str(findings or "").strip()
 
     if not findings:
         raise AlertError("Please enter your findings.")
 
     with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
-
-        if not alert:
-            raise AlertError("Alert not found.")
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] in {"RESOLVED", "VERIFIED"}:
             raise AlertError("This alert is already closed.")
 
         connection.execute(
-            "UPDATE alerts SET operator_findings = ? WHERE id = ?",
+            """
+            UPDATE alerts
+            SET operator_findings = ?
+            WHERE id = ?
+            """,
             (findings, alert_id),
         )
 
@@ -314,23 +358,37 @@ def add_operator_findings(alert_id, username, role, findings):
         )
 
 
-def escalate_alert(alert_id, username, role, reason=""):
+# ---------------------------------------------------------
+# ESCALATION
+# ---------------------------------------------------------
+
+def escalate_alert(
+    alert_id,
+    username,
+    role,
+    reason="",
+):
     _require_role(role, {"operator", "maintenance_head"})
 
-    with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
+    reason = str(reason or "").strip()
 
-        if not alert:
-            raise AlertError("Alert not found.")
+    with _connect() as connection:
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] in {"RESOLVED", "VERIFIED"}:
             raise AlertError("Closed alerts cannot be escalated.")
 
+        if bool(alert["escalated"]):
+            raise AlertError(
+                "This alert has already been escalated."
+            )
+
         connection.execute(
-            "UPDATE alerts SET escalated = 1 WHERE id = ?",
+            """
+            UPDATE alerts
+            SET escalated = 1
+            WHERE id = ? AND escalated = 0
+            """,
             (alert_id,),
         )
 
@@ -344,6 +402,10 @@ def escalate_alert(alert_id, username, role, reason=""):
         )
 
 
+# ---------------------------------------------------------
+# MAINTENANCE ASSIGNMENT
+# ---------------------------------------------------------
+
 def assign_maintenance(
     alert_id,
     username,
@@ -353,40 +415,60 @@ def assign_maintenance(
 ):
     _require_role(role, {"maintenance_head"})
 
-    if not assigned_to.strip():
+    assigned_to = str(assigned_to or "").strip()
+    instructions = str(instructions or "").strip()
+
+    if not assigned_to:
         raise AlertError("Please specify the person assigned.")
 
     with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
-
-        if not alert:
-            raise AlertError("Alert not found.")
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] in {"RESOLVED", "VERIFIED"}:
             raise AlertError("Closed alerts cannot be assigned.")
+
+        if alert["status"] == "UNDER MAINTENANCE":
+            raise AlertError(
+                "Maintenance has already been assigned to this alert."
+            )
 
         now = _now()
 
         connection.execute(
             """
             UPDATE alerts
-            SET assigned_to = ?, status = 'UNDER MAINTENANCE'
+            SET assigned_to = ?,
+                status = 'UNDER MAINTENANCE'
             WHERE id = ?
             """,
-            (assigned_to.strip(), alert_id),
+            (assigned_to, alert_id),
         )
 
         connection.execute(
             """
             INSERT INTO maintenance_assignments
-            (alert_id, assigned_to, assigned_by, instructions, assigned_at)
+            (
+                alert_id,
+                assigned_to,
+                assigned_by,
+                instructions,
+                assigned_at
+            )
             VALUES (?, ?, ?, ?, ?)
             """,
-            (alert_id, assigned_to.strip(), username, instructions, now),
+            (
+                alert_id,
+                assigned_to,
+                username,
+                instructions,
+                now,
+            ),
         )
+
+        details = f"Assigned to {assigned_to}."
+
+        if instructions:
+            details += f" {instructions}"
 
         _record_activity(
             connection,
@@ -394,9 +476,13 @@ def assign_maintenance(
             "MAINTENANCE_ASSIGNED",
             username,
             role,
-            f"Assigned to {assigned_to}. {instructions}".strip(),
+            details,
         )
 
+
+# ---------------------------------------------------------
+# RESOLUTION
+# ---------------------------------------------------------
 
 def resolve_alert(
     alert_id,
@@ -406,23 +492,17 @@ def resolve_alert(
 ):
     _require_role(role, {"maintenance_head"})
 
-    corrective_action = corrective_action.strip()
+    corrective_action = str(corrective_action or "").strip()
 
     if not corrective_action:
         raise AlertError("Please record the corrective action.")
 
     with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
-
-        if not alert:
-            raise AlertError("Alert not found.")
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] != "UNDER MAINTENANCE":
             raise AlertError(
-                "The alert must be under maintenance before resolution."
+                "This alert must be under maintenance before resolution."
             )
 
         now = _now()
@@ -457,27 +537,35 @@ def resolve_alert(
         )
 
 
-def verify_alert(alert_id, username, role, verification_notes=""):
+# ---------------------------------------------------------
+# VERIFICATION
+# ---------------------------------------------------------
+
+def verify_alert(
+    alert_id,
+    username,
+    role,
+    verification_notes="",
+):
     _require_role(role, {"maintenance_head"})
 
-    with _connect() as connection:
-        alert = connection.execute(
-            "SELECT * FROM alerts WHERE id = ?",
-            (alert_id,),
-        ).fetchone()
+    verification_notes = str(verification_notes or "").strip()
 
-        if not alert:
-            raise AlertError("Alert not found.")
+    with _connect() as connection:
+        alert = _get_alert_for_update(connection, alert_id)
 
         if alert["status"] != "RESOLVED":
-            raise AlertError("Only resolved alerts can be verified.")
+            raise AlertError(
+                "Only resolved alerts can be verified."
+            )
 
         now = _now()
 
         connection.execute(
             """
             UPDATE alerts
-            SET status = 'VERIFIED', verified_at = ?
+            SET status = 'VERIFIED',
+                verified_at = ?
             WHERE id = ?
             """,
             (now, alert_id),
@@ -489,5 +577,6 @@ def verify_alert(alert_id, username, role, verification_notes=""):
             "VERIFIED",
             username,
             role,
-            verification_notes or "Maintenance verification completed.",
+            verification_notes
+            or "Maintenance verification completed.",
         )

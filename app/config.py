@@ -12,7 +12,7 @@ APP_NAME = "MANTIQ"
 TAGLINE = "Action Before Failure."
 
 DATA_SOURCE_LABEL = "NASA IMS — Historical Bearing Experiment"
-REPLAY_LABEL = "Historical Data Replay — Not a Live Sensor Feed"
+REPLAY_LABEL = "Experimental Data Replay"
 DEMO_AUTH_NOTICE = (
     "Demo authentication for the hackathon prototype. "
 )
@@ -78,7 +78,7 @@ ROLE_LABELS = {
 # and completely unacceptable in a real product.
 DEMO_USERS = {
     "operator": {
-        "password": "operator123",
+        "password": "operator456",
         "role": ROLE_OPERATOR,
         "display_name": "Demo Operator",
     },
@@ -97,12 +97,15 @@ NAV_HEAD_ONLY = ["Team / Assignments", "Analytics", "Configuration"]
 
 
 def pages_for_role(role: str) -> list:
-    """Page names a role may see. The real permission checks for actions
-    live in the services layer; this list only decides what is displayed."""
+    """Page names a role may see."""
     if role == ROLE_HEAD:
-        return NAV_SHARED + NAV_HEAD_ONLY
-    return list(NAV_SHARED)
+        return [
+            page
+            for page in NAV_SHARED + NAV_HEAD_ONLY
+            if page.strip().casefold() != "configuration"
+        ]
 
+    return list(NAV_SHARED)
 
 # ----------------------------------------------------------------------------
 # Theme

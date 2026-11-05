@@ -260,7 +260,14 @@ MANTIQ is a research and demonstration prototype.
 
 ## 12. AI Tools and Development Assistance
 
-AI-assisted tools were used during development for coding assistance, debugging, documentation and project refinement. The machine-learning pipeline, data processing and application components should be evaluated based on their implementation and demonstrated outputs.
+## AI Tools and Development Assistance
+
+AI-assisted tools were used during the development of MANTIQ:
+
+- **ChatGPT (OpenAI):** System architecture discussions, coding assistance, debugging, implementation guidance and technical documentation.
+- **Claude (Anthropic):** Coding assistance, code review, debugging and development support.
+
+AI tools supported the development process. Project implementation, integration, testing, model training and validation were carried out and reviewed as part of the development workflow.
 
 ## 13. Acknowledgements
 

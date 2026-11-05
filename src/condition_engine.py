@@ -2,6 +2,7 @@ import pandas as pd
 
 
 def max_anomaly_streak(values):
+    """Return the longest consecutive anomaly run in a sequence."""
     longest = 0
     current = 0
 
@@ -15,35 +16,70 @@ def max_anomaly_streak(values):
     return longest
 
 
-def assess_condition(anomaly_rate, avg_score, streak):
+def current_anomaly_streak(values):
+    """Count consecutive anomalies ending at the latest recording."""
+    streak = 0
 
-    if anomaly_rate >= 0.75 or (avg_score < -0.10 and streak >= 5):
+    for value in reversed(values):
+        if value == 1:
+            streak += 1
+        else:
+            break
+
+    return streak
+
+
+def assess_condition(anomaly_rate, avg_score, streak):
+    """
+    Assess condition using recent anomaly frequency, score severity
+    and the current consecutive anomaly streak.
+
+    These are experimental prototype thresholds, not validated
+    industrial failure thresholds.
+    """
+
+    # Sustained and substantial deviation
+    if (
+        anomaly_rate >= 0.70
+        and avg_score <= -0.08
+        and streak >= 10
+    ) or (
+        anomaly_rate >= 0.85
+        and avg_score <= -0.05
+        and streak >= 15
+    ):
         return "CRITICAL"
 
-    elif anomaly_rate >= 0.20 or (avg_score < 0.05 and streak >= 3):
+    # Repeated anomalies with a meaningfully negative average score
+    elif (
+        anomaly_rate >= 0.40
+        and avg_score <= -0.03
+        and streak >= 5
+    ):
         return "WARNING"
 
-    else:
-        return "NORMAL"
+    return "NORMAL"
 
 
 def recommend_action(condition):
 
     if condition == "CRITICAL":
-        return "Escalate to maintenance head. Inspect bearing before continued operation."
+        return (
+            "Prioritise maintenance inspection. "
+            "Review recent vibration trends before deciding on operation."
+        )
 
     elif condition == "WARNING":
-        return "Schedule bearing inspection. Monitor vibration closely."
+        return (
+            "Schedule a bearing inspection and continue closer monitoring."
+        )
 
-    else:
-        return "Continue normal operation and routine monitoring."
+    return "Continue routine monitoring."
 
 
 def main():
-    # Load bearing anomaly predictions
     data = pd.read_csv("results/bearing_timeline.csv")
 
-    # Use the latest 50 recordings
     recent = data.tail(50)
 
     print("\n========== MANTIQ CONDITION REPORT ==========\n")
@@ -55,15 +91,23 @@ def main():
 
         anomaly_rate = recent[anomaly_column].mean()
         avg_score = recent[score_column].mean()
-        streak = max_anomaly_streak(recent[anomaly_column].tolist())
 
-        condition = assess_condition(anomaly_rate, avg_score, streak)
+        streak = current_anomaly_streak(
+            recent[anomaly_column].tolist()
+        )
+
+        condition = assess_condition(
+            anomaly_rate,
+            avg_score,
+            streak
+        )
+
         action = recommend_action(condition)
 
         print(f"BEARING {bearing}")
         print(f"Recent anomaly rate: {anomaly_rate * 100:.2f}%")
         print(f"Average anomaly score: {avg_score:.4f}")
-        print(f"Longest anomaly streak: {streak} recordings")
+        print(f"Current anomaly streak: {streak} recordings")
         print(f"Machine condition: {condition}")
         print(f"Recommended action: {action}")
         print("--------------------------------------------")
